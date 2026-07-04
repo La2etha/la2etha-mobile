@@ -6,8 +6,9 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '../../../../src/components/Screen';
 import { AppText } from '../../../../src/components/Text';
 import { GlowButton } from '../../../../src/components/GlowButton';
-import { StateView } from '../../../../src/components/StateView';
+import { JobProgress } from '../../../../src/components/JobProgress';
 import { useAuth } from '../../../../src/auth/AuthContext';
+import { useReducedMotion } from '../../../../src/lib/reduceMotion';
 import { uploadPhotos, processingStatus, UploadAccepted } from '../../../../src/api/photos';
 import { processingPhase } from '../../../../src/features/jobs';
 import { ApiError } from '../../../../src/api/errors';
@@ -22,6 +23,7 @@ export default function AddPhotos() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const reduce = useReducedMotion();
 
   const statusQ = useQuery({
     queryKey: ['processing', jobId],
@@ -70,17 +72,22 @@ export default function AddPhotos() {
 
     return (
       <Screen style={{ padding: space.xl, gap: space.lg, justifyContent: 'center' }}>
-        <AppText variant="display" style={{ textAlign: 'center' }}>
-          {processing === 'working' ? 'Processing…' : 'All set 🎞️'}
-        </AppText>
         <AppText variant="body" color={colors.inkSoft} style={{ textAlign: 'center' }}>
           {summary}
-          {processing === 'working' ? ' Lahza is scanning them for faces.' : ''}
         </AppText>
         {processing === 'working' ? (
-          <StateView kind="loading" title="" />
+          <JobProgress
+            title="Scanning for faces…"
+            processed={statusQ.data?.processed}
+            total={statusQ.data?.total}
+            hint="You can leave this screen — it keeps going in the background."
+            reduceMotion={reduce}
+          />
         ) : (
-          <GlowButton label="Done" onPress={() => router.back()} />
+          <>
+            <AppText variant="display" style={{ textAlign: 'center' }}>All set 🎞️</AppText>
+            <GlowButton label="Done" onPress={() => router.back()} />
+          </>
         )}
         <Pressable onPress={addMore} style={{ alignItems: 'center', paddingVertical: space.sm }}>
           <AppText variant="label" color={colors.stamp}>Add more</AppText>

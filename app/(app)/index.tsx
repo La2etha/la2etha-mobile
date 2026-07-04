@@ -11,7 +11,7 @@ import { ApiError } from '../../src/api/errors';
 import { colors, space } from '../../src/theme';
 
 export default function EventsHome() {
-  const { user, token, signOut } = useAuth();
+  const { user, token } = useAuth();
   const router = useRouter();
   const { data, isLoading, isError, error, refetch, isRefetching } = useEvents(token);
 
@@ -54,9 +54,12 @@ export default function EventsHome() {
               <AppText variant="display">Ahlan, {user?.name ?? 'friend'}</AppText>
               <AppText variant="body" color={colors.inkSoft}>Your لمّات live here.</AppText>
             </View>
-            {/* ponytail: temporary sign-out until the Profile tab lands in Slice 5 */}
-            <Pressable onPress={signOut} hitSlop={8} accessibilityRole="button">
-              <AppText variant="label" color={colors.inkSoft}>Sign out</AppText>
+            <Pressable
+              onPress={() => router.push('/(app)/profile' as never)}
+              hitSlop={8}
+              accessibilityRole="button"
+            >
+              <AppText variant="label" color={colors.stamp}>Profile</AppText>
             </Pressable>
           </View>
         }

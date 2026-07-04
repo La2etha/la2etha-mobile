@@ -18,7 +18,13 @@ export default function AppLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="create" options={{ presentation: 'modal' }} />
       <Stack.Screen name="join" options={{ presentation: 'modal' }} />
-      {/* event/[id] and its enroll/add children auto-discover with default options */}
+      {/* Lightbox is a transparent modal so the gallery shows behind while the
+          photo morphs open from its thumbnail. */}
+      <Stack.Screen
+        name="event/[id]/photo/[photoId]"
+        options={{ presentation: 'transparentModal', animation: 'none' }}
+      />
+      {/* event/[id] and its other children auto-discover with default options */}
     </Stack>
   );
 }

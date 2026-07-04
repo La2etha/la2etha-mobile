@@ -39,3 +39,34 @@ export async function apiFetch<T>(path: string, opts: Opts = {}): Promise<T> {
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
+
+/** Like apiFetch but for endpoints that return raw image bytes (export/edit).
+ *  Resolves to a `data:` URI so the result can be shown in <Image> and saved. */
+export async function apiFetchImage(
+  path: string,
+  opts: { method?: 'POST'; jsonBody?: unknown; token?: string } = {}
+): Promise<string> {
+  const headers: Record<string, string> = { Accept: 'image/*' };
+  let body: string | undefined;
+  if (opts.jsonBody !== undefined) {
+    headers['Content-Type'] = 'application/json';
+    body = JSON.stringify(opts.jsonBody);
+  }
+  if (opts.token) headers.Authorization = `Bearer ${opts.token}`;
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, { method: opts.method ?? 'POST', headers, body });
+  } catch {
+    throw new ApiError(0, toFriendly(0, 'network'));
+  }
+  if (!res.ok) throw new ApiError(res.status, toFriendly(res.status, 'http'), `HTTP ${res.status}`);
+
+  const blob = await res.blob();
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new ApiError(0, toFriendly(0, 'network')));
+    reader.readAsDataURL(blob);
+  });
+}

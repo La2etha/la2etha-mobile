@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Pressable, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { useQuery } from '@tanstack/react-query';
@@ -8,12 +8,23 @@ import { Screen } from '../../../../src/components/Screen';
 import { AppText } from '../../../../src/components/Text';
 import { GlowButton } from '../../../../src/components/GlowButton';
 import { StateView } from '../../../../src/components/StateView';
+import { JobProgress } from '../../../../src/components/JobProgress';
 import { ScanRing } from '../../../../src/components/ScanRing';
 import { useAuth } from '../../../../src/auth/AuthContext';
+import { useReducedMotion } from '../../../../src/lib/reduceMotion';
 import { enroll, enrollStatus } from '../../../../src/api/enroll';
 import { enrollPhase, enrollMessage } from '../../../../src/features/jobs';
 import { ApiError } from '../../../../src/api/errors';
 import { colors, space } from '../../../../src/theme';
+
+// Cycled while the enroll job runs (no server-side increments to show) so the
+// wait feels alive and honest — no fabricated percentage.
+const REASSURANCE = [
+  'Reading your features…',
+  'Comparing against the event photos…',
+  'Lining up your best angles…',
+  'Almost there…',
+] as const;
 
 // Multi-angle prompts. 5 samples sits comfortably inside the backend's 3–8 range.
 const ANGLES = [
@@ -34,11 +45,8 @@ export default function Enroll() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [reduce, setReduce] = useState(false);
-
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled().then(setReduce);
-  }, []);
+  const [hintI, setHintI] = useState(0);
+  const reduce = useReducedMotion();
 
   const statusQ = useQuery({
     queryKey: ['enrollStatus', jobId],
@@ -51,6 +59,13 @@ export default function Enroll() {
   // Stamp-thunk when enrollment lands.
   useEffect(() => {
     if (phase === 'done') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [phase]);
+
+  // Cycle the reassurance copy while we wait on the CV job.
+  useEffect(() => {
+    if (phase !== 'working') return;
+    const t = setInterval(() => setHintI((i) => (i + 1) % REASSURANCE.length), 2500);
+    return () => clearInterval(t);
   }, [phase]);
 
   async function capture() {
@@ -133,8 +148,12 @@ export default function Enroll() {
       );
     }
     return (
-      <Screen>
-        <StateView kind="loading" title="Finding you…" message="Building your face signature." />
+      <Screen style={{ justifyContent: 'center' }}>
+        <JobProgress
+          title="Finding you…"
+          hint={`${REASSURANCE[hintI]}\nThis usually takes a few seconds.`}
+          reduceMotion={reduce}
+        />
       </Screen>
     );
   }

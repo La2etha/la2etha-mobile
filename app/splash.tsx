@@ -51,17 +51,18 @@ export default function Splash() {
   useEffect(() => {
     if (status === 'loading') return;
     let cancelled = false;
-    (async () => {
+    // Always hold for a brand beat once auth resolves. Reduced motion disables the
+    // animation (below), not the splash itself — the moment still shows.
+    const t = setTimeout(async () => {
       const fr = await firstRun.get();
       const dest = decideBootRoute({ status, firstRun: fr });
-      setTimeout(() => {
-        if (!cancelled) router.replace(dest as never);
-      }, reduce ? 0 : 2750);
-    })();
+      if (!cancelled) router.replace(dest as never);
+    }, 1800);
     return () => {
       cancelled = true;
+      clearTimeout(t);
     };
-  }, [status, reduce]);
+  }, [status]);
 
   return (
     <Screen style={{ alignItems: 'center', justifyContent: 'center', backgroundColor: colors.paper }}>

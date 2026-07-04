@@ -35,6 +35,13 @@
         {
           "photosPermission": "Lahza needs access to your photos so you can add them to the shared event pool."
         }
+      ],
+      [
+        "expo-media-library",
+        {
+          "savePhotosPermission": "Lahza saves your exported and edited photos to your library.",
+          "photosPermission": "Lahza saves your exported and edited photos to your library."
+        }
       ]
     ],
     "experiments": {

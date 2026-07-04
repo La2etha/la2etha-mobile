@@ -1,4 +1,5 @@
 import { Pressable, Share, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '../../../../src/components/Screen';
 import { AppText } from '../../../../src/components/Text';
@@ -53,60 +54,79 @@ export default function EventHub() {
         </View>
       </View>
 
-      {/* Live actions */}
+      {/* Live actions — staggered in */}
       <ActionCard
+        delay={0}
         title="Enroll your face"
         body="Scan once so Lahza can find you in the crowd."
         onPress={() => router.push(`/(app)/event/${event.id}/enroll` as never)}
       />
       <ActionCard
+        delay={70}
         title="Add photos"
         body="Drop your shots into the shared pool."
         onPress={() => router.push(`/(app)/event/${event.id}/add` as never)}
       />
+      <ActionCard
+        delay={140}
+        title="Your gallery"
+        body="Open a private gallery of only the photos you’re in."
+        onPress={() => router.push(`/(app)/event/${event.id}/gallery` as never)}
+      />
+      <ActionCard
+        delay={210}
+        title="Search"
+        body="Find your photos in plain words — “near the cake”."
+        onPress={() => router.push(`/(app)/event/${event.id}/search` as never)}
+      />
 
       {isHost ? (
-        <GlowButton
-          label="Share invite"
-          onPress={() => Share.share({ message: `Join my لمّة on Lahza — code ${event.join_code}` })}
-        />
+        <>
+          <ActionCard
+            delay={280}
+            title="Host review"
+            body="Promote demoted photos and see the whole pool."
+            onPress={() => router.push(`/(app)/event/${event.id}/review` as never)}
+          />
+          <GlowButton
+            label="Share invite"
+            onPress={() => Share.share({ message: `Join my لمّة on Lahza — code ${event.join_code}` })}
+          />
+        </>
       ) : null}
-
-      {/* Coming next */}
-      <View
-        style={{
-          backgroundColor: colors.paperSunk,
-          borderRadius: radius.md,
-          padding: space.lg,
-          marginTop: space.sm,
-        }}
-      >
-        <AppText variant="label" color={colors.inkSoft}>Your gallery</AppText>
-        <AppText variant="caption" color={colors.inkFaint}>
-          Once you’ve enrolled and photos are in, your private gallery arrives in the next update.
-        </AppText>
-      </View>
     </Screen>
   );
 }
 
-function ActionCard({ title, body, onPress }: { title: string; body: string; onPress: () => void }) {
+function ActionCard({
+  title,
+  body,
+  onPress,
+  delay = 0,
+}: {
+  title: string;
+  body: string;
+  onPress: () => void;
+  delay?: number;
+}) {
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      style={({ pressed }) => ({
-        backgroundColor: colors.card,
-        borderRadius: radius.md,
-        borderWidth: 1,
-        borderColor: colors.line,
-        padding: space.lg,
-        gap: 2,
-        opacity: pressed ? 0.95 : 1,
-      })}
-    >
-      <AppText variant="h2">{title}</AppText>
-      <AppText variant="caption" color={colors.inkSoft}>{body}</AppText>
-    </Pressable>
+    <Animated.View entering={FadeInDown.duration(380).delay(delay)}>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        style={({ pressed }) => ({
+          backgroundColor: colors.card,
+          borderRadius: radius.md,
+          borderWidth: 1,
+          borderColor: colors.line,
+          padding: space.lg,
+          gap: 2,
+          opacity: pressed ? 0.95 : 1,
+        })}
+      >
+        <AppText variant="h2">{title}</AppText>
+        <AppText variant="caption" color={colors.inkSoft}>{body}</AppText>
+      </Pressable>
+    </Animated.View>
   );
 }

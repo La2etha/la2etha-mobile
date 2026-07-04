@@ -18,3 +18,9 @@ export async function login(email: string, password: string): Promise<string> {
 export function me(token: string): Promise<User> {
   return apiFetch<User>('/users/me', { token });
 }
+
+/** Delete the caller's face data: enrollments, gallery entries, cluster claims
+ *  (FR-022). The account itself stays. */
+export function deleteIdentity(token: string): Promise<void> {
+  return apiFetch<void>('/users/me/identity', { method: 'DELETE', token });
+}
