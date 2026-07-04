@@ -5,12 +5,13 @@ type Opts = {
   method?: 'GET' | 'POST' | 'DELETE' | 'PATCH';
   jsonBody?: unknown;
   formBody?: Record<string, string>;
+  multipart?: FormData; // file uploads — let fetch set the multipart boundary itself
   token?: string;
 };
 
 export async function apiFetch<T>(path: string, opts: Opts = {}): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
-  let body: string | undefined;
+  let body: string | FormData | undefined;
 
   if (opts.jsonBody !== undefined) {
     headers['Content-Type'] = 'application/json';
@@ -21,6 +22,10 @@ export async function apiFetch<T>(path: string, opts: Opts = {}): Promise<T> {
     body = Object.entries(opts.formBody)
       .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
       .join('&');
+  }
+  if (opts.multipart) {
+    // Deliberately no Content-Type: fetch adds it with the correct boundary.
+    body = opts.multipart;
   }
   if (opts.token) headers.Authorization = `Bearer ${opts.token}`;
 

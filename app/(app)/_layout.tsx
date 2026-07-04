@@ -18,7 +18,7 @@ export default function AppLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="create" options={{ presentation: 'modal' }} />
       <Stack.Screen name="join" options={{ presentation: 'modal' }} />
-      <Stack.Screen name="event/[id]" />
+      {/* event/[id] and its enroll/add children auto-discover with default options */}
     </Stack>
   );
 }

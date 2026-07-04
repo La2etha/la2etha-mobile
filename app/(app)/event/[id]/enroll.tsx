@@ -1,0 +1,169 @@
+import { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, Pressable, View } from 'react-native';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as Haptics from 'expo-haptics';
+import { useQuery } from '@tanstack/react-query';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Screen } from '../../../../src/components/Screen';
+import { AppText } from '../../../../src/components/Text';
+import { GlowButton } from '../../../../src/components/GlowButton';
+import { StateView } from '../../../../src/components/StateView';
+import { ScanRing } from '../../../../src/components/ScanRing';
+import { useAuth } from '../../../../src/auth/AuthContext';
+import { enroll, enrollStatus } from '../../../../src/api/enroll';
+import { enrollPhase, enrollMessage } from '../../../../src/features/jobs';
+import { ApiError } from '../../../../src/api/errors';
+import { colors, space } from '../../../../src/theme';
+
+// Multi-angle prompts. 5 samples sits comfortably inside the backend's 3–8 range.
+const ANGLES = [
+  'Look straight at the camera',
+  'Turn your head slightly left',
+  'Turn your head slightly right',
+  'Lift your chin a little',
+  'One more — straight on',
+] as const;
+
+export default function Enroll() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const { token } = useAuth();
+  const router = useRouter();
+  const cameraRef = useRef<CameraView>(null);
+  const [permission, requestPermission] = useCameraPermissions();
+  const [shots, setShots] = useState<string[]>([]);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [reduce, setReduce] = useState(false);
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduce);
+  }, []);
+
+  const statusQ = useQuery({
+    queryKey: ['enrollStatus', jobId],
+    queryFn: () => enrollStatus(id, jobId!, token!),
+    enabled: !!jobId && !!token,
+    refetchInterval: (q) => (enrollPhase(q.state.data) === 'working' ? 1500 : false),
+  });
+  const phase = jobId ? enrollPhase(statusQ.data) : 'capture';
+
+  // Stamp-thunk when enrollment lands.
+  useEffect(() => {
+    if (phase === 'done') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [phase]);
+
+  async function capture() {
+    if (!cameraRef.current || busy) return;
+    setBusy(true);
+    try {
+      const pic = await cameraRef.current.takePictureAsync({ quality: 0.6, skipProcessing: true });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const next = [...shots, pic!.uri];
+      setShots(next);
+      if (next.length >= ANGLES.length) await submit(next);
+    } catch {
+      setError('That shot didn’t take. Try again.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submit(uris: string[]) {
+    try {
+      const r = await enroll(id, uris, token!);
+      setJobId(r.job_id);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.friendly : 'Couldn’t start enrollment. Please try again.');
+    }
+  }
+
+  function reset() {
+    setShots([]);
+    setJobId(null);
+    setError(null);
+  }
+
+  // --- Permission gates ---
+  if (!permission) {
+    return (
+      <Screen>
+        <StateView kind="loading" title="Preparing the camera…" />
+      </Screen>
+    );
+  }
+  if (!permission.granted) {
+    return (
+      <Screen>
+        <StateView
+          kind="error"
+          title="Camera access needed"
+          message="Lahza needs your camera to scan your face for this event. Nothing is shared — it only helps find you in the photos."
+          actionLabel="Allow camera"
+          onAction={requestPermission}
+        />
+      </Screen>
+    );
+  }
+
+  // --- Tracking the CV job ---
+  if (jobId && phase !== 'capture') {
+    if (phase === 'done') {
+      return (
+        <Screen style={{ padding: space.xl, gap: space.lg, justifyContent: 'center' }}>
+          <AppText variant="display" style={{ textAlign: 'center' }}>You’re in ✨</AppText>
+          <AppText variant="body" color={colors.inkSoft} style={{ textAlign: 'center' }}>
+            {enrollMessage(statusQ.data)}
+          </AppText>
+          <GlowButton label="Done" onPress={() => router.back()} />
+        </Screen>
+      );
+    }
+    if (phase === 'failed') {
+      return (
+        <Screen>
+          <StateView
+            kind="error"
+            title="Let’s try that again"
+            message={enrollMessage(statusQ.data)}
+            actionLabel="Retake"
+            onAction={reset}
+          />
+        </Screen>
+      );
+    }
+    return (
+      <Screen>
+        <StateView kind="loading" title="Finding you…" message="Building your face signature." />
+      </Screen>
+    );
+  }
+
+  // --- Capture ---
+  const prompt = ANGLES[Math.min(shots.length, ANGLES.length - 1)];
+  return (
+    <Screen style={{ padding: space.xl, alignItems: 'center', justifyContent: 'space-between' }}>
+      <View style={{ alignItems: 'center', gap: space.xs }}>
+        <AppText variant="h1">Enroll your face</AppText>
+        <AppText variant="body" color={colors.inkSoft} style={{ textAlign: 'center' }}>
+          {prompt}
+        </AppText>
+      </View>
+
+      <ScanRing total={ANGLES.length} captured={shots.length} reduceMotion={reduce}>
+        <CameraView ref={cameraRef} style={{ flex: 1 }} facing="front" />
+      </ScanRing>
+
+      <View style={{ width: '100%', gap: space.md, alignItems: 'center' }}>
+        <AppText variant="mono" color={colors.inkFaint}>
+          {shots.length} / {ANGLES.length}
+        </AppText>
+        {error ? <AppText variant="label" color={colors.danger}>{error}</AppText> : null}
+        <GlowButton label={busy ? 'Hold still…' : 'Capture'} onPress={capture} loading={busy} />
+        <Pressable onPress={() => router.back()} hitSlop={8}>
+          <AppText variant="label" color={colors.inkSoft}>Cancel</AppText>
+        </Pressable>
+      </View>
+    </Screen>
+  );
+}
