@@ -12,6 +12,9 @@ export type GalleryPhoto = {
   contributor_id: string;
   // "Best photos of you" ranking (spec 004 R1) — main-relevance items only.
   best_score?: number | null;
+  // Video support (spec 003) — duration_s is set only for media_type="video".
+  media_type?: 'photo' | 'video' | string;
+  duration_s?: number | null;
 };
 
 export type GalleryPage = { items: GalleryPhoto[]; next_cursor?: string | null };
@@ -68,4 +71,9 @@ export function deletePhoto(photoId: string, token: string): Promise<void> {
  *  must attach the bearer token via expo-image's `source.headers`. */
 export function photoUri(photoId: string): string {
   return `${API_BASE_URL}/photos/${photoId}`;
+}
+
+/** Poster-frame JPEG for a video (spec 003) — same access guard as photoUri. */
+export function posterUri(photoId: string): string {
+  return `${API_BASE_URL}/photos/${photoId}/poster`;
 }

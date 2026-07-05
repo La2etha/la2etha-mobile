@@ -21,6 +21,9 @@ export function enrollMessage(s?: EnrollmentStatus): string {
       : 'You’re enrolled — new photos will find you automatically.';
   }
   if (phase === 'failed') {
+    if (s?.reason === 'low_quality_video') {
+      return 'That video was too shaky or dim to use. Try again in good light, turning your head slowly.';
+    }
     return (
       s?.reason ??
       'We couldn’t get a clear read. Try again in good light, facing the camera.'

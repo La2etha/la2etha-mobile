@@ -5,6 +5,8 @@ export type PoolPhoto = {
   id: string;
   contributor_id: string;
   processing_status: string;
+  media_type?: string;
+  duration_s?: number | null;
   created_at: string;
 };
 

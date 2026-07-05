@@ -12,7 +12,7 @@ import { JobProgress } from '../../../../src/components/JobProgress';
 import { useAuth } from '../../../../src/auth/AuthContext';
 import { useReducedMotion } from '../../../../src/lib/reduceMotion';
 import { useEvent } from '../../../../src/features/events/hooks';
-import { uploadPhotos, processingStatus, UploadAccepted } from '../../../../src/api/photos';
+import { uploadMedia, processingStatus, UploadAccepted } from '../../../../src/api/photos';
 import { processingPhase } from '../../../../src/features/jobs';
 import { ApiError } from '../../../../src/api/errors';
 import { colors, role, space } from '../../../../src/theme';
@@ -39,14 +39,15 @@ export default function AddPhotos() {
   async function pick() {
     setError(null);
     const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ['images', 'videos'],
       allowsMultipleSelection: true,
       quality: 0.7,
+      videoMaxDuration: 60,
     });
     if (res.canceled || !res.assets?.length) return;
     setBusy(true);
     try {
-      const r = await uploadPhotos(id, res.assets.map((a) => a.uri), token!);
+      const r = await uploadMedia(id, res.assets.map((a) => a.uri), token!);
       setResult(r);
       if (r.job_id) setJobId(r.job_id);
       qc.invalidateQueries({ queryKey: ['events'] }); // photo_count changed
@@ -67,18 +68,27 @@ export default function AddPhotos() {
     const processing = jobId ? processingPhase(statusQ.data) : 'done';
     const summary =
       result.accepted > 0
-        ? `Added ${result.accepted} photo${result.accepted === 1 ? '' : 's'}${
+        ? `Added ${result.accepted} item${result.accepted === 1 ? '' : 's'}${
             result.duplicates ? `, skipped ${result.duplicates} already in the pool` : ''
           }.`
         : result.duplicates > 0
-          ? 'Those photos are already in the pool.'
+          ? 'Those items are already in the pool.'
           : 'Nothing new to add.';
+    const rejectedSummary =
+      result.rejected?.length > 0
+        ? `${result.rejected.length} item${result.rejected.length === 1 ? '' : 's'} couldn't be added (unsupported file or over the 60s video limit).`
+        : null;
 
     return (
       <Screen style={{ padding: space.xl, gap: space.lg, justifyContent: 'center' }}>
         <AppText variant="body" color={colors.inkSoft} style={{ textAlign: 'center' }}>
           {summary}
         </AppText>
+        {rejectedSummary ? (
+          <AppText variant="label" color={colors.danger} style={{ textAlign: 'center' }}>
+            {rejectedSummary}
+          </AppText>
+        ) : null}
         {processing === 'working' ? (
           <JobProgress
             title="Scanning for faces…"
@@ -131,12 +141,12 @@ export default function AddPhotos() {
   // --- Pick view ---
   return (
     <Screen style={{ padding: space.xl, gap: space.lg, justifyContent: 'center' }}>
-      <AppText variant="display">Add photos</AppText>
+      <AppText variant="display">Add photos & videos</AppText>
       <AppText variant="body" color={colors.inkSoft}>
-        Pick shots from your camera roll to drop into the shared pool. Everyone’s photos land in one place.
+        Pick shots or short clips (up to 60s) from your camera roll to drop into the shared pool. Everyone’s media lands in one place.
       </AppText>
       {error ? <AppText variant="label" color={colors.danger}>{error}</AppText> : null}
-      <GlowButton label={busy ? 'Uploading…' : 'Choose photos'} onPress={pick} loading={busy} />
+      <GlowButton label={busy ? 'Uploading…' : 'Choose photos or videos'} onPress={pick} loading={busy} />
       <IconLabelAction icon="x" label="Cancel" onPress={() => router.back()} tone={colors.inkSoft} />
     </Screen>
   );

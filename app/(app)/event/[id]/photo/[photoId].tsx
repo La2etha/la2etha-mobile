@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Modal, Pressable, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { Directions, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
@@ -25,6 +26,28 @@ import { exportPhoto } from '../../../../../src/api/edit';
 import { saveDataUriToPhotos } from '../../../../../src/lib/saveImage';
 import { ApiError } from '../../../../../src/api/errors';
 import { colors, radius, space } from '../../../../../src/theme';
+
+/** Video branch of the lightbox (spec 003 US3). Mounted with `key={photoId}` by
+ * the caller so swiping to a neighbor unmounts this (stopping playback) rather
+ * than needing manual pause/replace bookkeeping. Uses the platform's default
+ * audio session, which already respects the iOS silent switch. */
+function VideoLightbox({ photoId, token }: { photoId: string; token: string }) {
+  const player = useVideoPlayer(
+    { uri: photoUri(photoId), headers: { Authorization: `Bearer ${token}` } },
+    (p) => {
+      p.loop = false;
+      p.play();
+    }
+  );
+  return (
+    <VideoView
+      player={player}
+      style={{ width: '100%', height: '100%' }}
+      nativeControls
+      contentFit="contain"
+    />
+  );
+}
 
 export default function Lightbox() {
   const params = useLocalSearchParams<{
@@ -72,6 +95,7 @@ export default function Lightbox() {
   // list (personal gallery or the "Everyone" pool) has this photo.
   const currentItem =
     list.find((i) => i.photo_id === currentId) ?? pool.data?.find((p) => p.id === currentId);
+  const isVideo = currentItem?.media_type === 'video';
   const isHost = eventQ.data?.owner_id === user?.id;
   const canDelete =
     !!eventQ.data &&
@@ -299,13 +323,17 @@ export default function Lightbox() {
       <Animated.View style={morphStyle}>
         <GestureDetector gesture={gesture}>
           <Animated.View style={[{ width: '100%', height: '100%' }, zoomStyle]}>
-            <Image
-              source={{ uri: photoUri(currentId), headers: { Authorization: `Bearer ${token}` } }}
-              style={{ width: '100%', height: '100%' }}
-              contentFit="cover"
-              transition={200}
-              onLoad={(e) => setSize({ w: e.source.width, h: e.source.height })}
-            />
+            {isVideo ? (
+              <VideoLightbox key={currentId} photoId={currentId} token={token!} />
+            ) : (
+              <Image
+                source={{ uri: photoUri(currentId), headers: { Authorization: `Bearer ${token}` } }}
+                style={{ width: '100%', height: '100%' }}
+                contentFit="cover"
+                transition={200}
+                onLoad={(e) => setSize({ w: e.source.width, h: e.source.height })}
+              />
+            )}
             {showFaces && faces.data ? (
               <FaceOverlay faces={faces.data} width={dispW} height={dispH} />
             ) : null}
@@ -368,16 +396,35 @@ export default function Lightbox() {
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(11,59,58,0.5)' }} onPress={() => setSheet(false)} />
         <View style={{ backgroundColor: colors.paper, padding: space.xl, gap: space.sm, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg }}>
           <IconLabelAction icon="download" label="Save to Photos" onPress={() => saveExport(false)} variant="card" />
-          <IconLabelAction icon="user-x" label="Save without strangers" onPress={() => saveExport(true)} variant="card" />
-          <IconLabelAction
-            icon="edit-3"
-            label="AI edit (just you)"
-            variant="card"
-            onPress={() => {
-              setSheet(false);
-              router.push(`/(app)/event/${id}/edit?photoId=${currentId}` as never);
-            }}
-          />
+          {isVideo ? (
+            <AppText variant="caption" color={colors.inkFaint} style={{ paddingHorizontal: space.md }}>
+              Removing strangers isn’t available for videos yet — saving keeps everyone in the clip.
+            </AppText>
+          ) : (
+            <IconLabelAction icon="user-x" label="Save without strangers" onPress={() => saveExport(true)} variant="card" />
+          )}
+          {!isVideo ? (
+            <>
+              <IconLabelAction
+                icon="sliders"
+                label="Edit"
+                variant="card"
+                onPress={() => {
+                  setSheet(false);
+                  router.push(`/(app)/event/${id}/editor?photoId=${currentId}` as never);
+                }}
+              />
+              <IconLabelAction
+                icon="edit-3"
+                label="AI edit (just you)"
+                variant="card"
+                onPress={() => {
+                  setSheet(false);
+                  router.push(`/(app)/event/${id}/editor?photoId=${currentId}&tab=ai` as never);
+                }}
+              />
+            </>
+          ) : null}
           {isHost ? (
             <IconLabelAction icon="image" label="Set as event cover" variant="card" onPress={makeCover} />
           ) : null}

@@ -166,6 +166,8 @@ export default function Gallery() {
             size={cell}
             reduceMotion={reduce}
             badge={bestIds.has(item.photo_id)}
+            mediaType={item.media_type}
+            durationS={item.duration_s}
             onPress={(rect) => openPhoto(item.photo_id, rect)}
           />
         )}
@@ -188,6 +190,8 @@ export default function Gallery() {
                       token={token!}
                       size={cell}
                       reduceMotion={reduce}
+                      mediaType={item.media_type}
+                      durationS={item.duration_s}
                       onPress={(rect) => openPhoto(item.photo_id, rect)}
                     />
                   ))}
@@ -278,6 +282,8 @@ function EveryonePool({
             token={token}
             size={cell}
             reduceMotion={reduce}
+            mediaType={item.media_type}
+            durationS={item.duration_s}
             onPress={(rect) => onOpen(item.id, rect)}
           />
         )}

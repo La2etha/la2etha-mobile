@@ -1,5 +1,5 @@
 import { apiFetch } from './client';
-import { filesFormData } from './uploads';
+import { filesFormData, videoPart } from './uploads';
 
 export type EnrollmentAccepted = { job_id: string; sample_count: number };
 
@@ -18,6 +18,18 @@ export function enroll(eventId: string, uris: string[], token: string): Promise<
   return apiFetch<EnrollmentAccepted>(`/events/${eventId}/enroll`, {
     method: 'POST',
     multipart: filesFormData(uris, 'enroll'),
+    token,
+  });
+}
+
+/** POST a single ≤5s selfie video → background centroid build (spec 003 US1).
+ * The server samples frames itself; the clip is deleted after extraction. */
+export function enrollVideo(eventId: string, uri: string, token: string): Promise<EnrollmentAccepted> {
+  const fd = new FormData();
+  fd.append('files', videoPart(uri, 'enroll.mp4'));
+  return apiFetch<EnrollmentAccepted>(`/events/${eventId}/enroll`, {
+    method: 'POST',
+    multipart: fd,
     token,
   });
 }

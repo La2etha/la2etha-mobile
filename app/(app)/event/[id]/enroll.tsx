@@ -14,7 +14,7 @@ import { JobProgress } from '../../../../src/components/JobProgress';
 import { ScanRing } from '../../../../src/components/ScanRing';
 import { useAuth } from '../../../../src/auth/AuthContext';
 import { useReducedMotion } from '../../../../src/lib/reduceMotion';
-import { enroll, enrollStatus } from '../../../../src/api/enroll';
+import { enroll, enrollStatus, enrollVideo } from '../../../../src/api/enroll';
 import { enrolledStore } from '../../../../src/features/events/enrolledStore';
 import { enrollPhase, enrollMessage } from '../../../../src/features/jobs';
 import { ApiError } from '../../../../src/api/errors';
@@ -50,6 +50,9 @@ export default function Enroll() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [hintI, setHintI] = useState(0);
+  // "Record instead" (spec 003 US1): a single ~3s selfie video, sampled server-side.
+  const [captureMode, setCaptureMode] = useState<'photo' | 'video'>('photo');
+  const [recording, setRecording] = useState(false);
   const reduce = useReducedMotion();
 
   const statusQ = useQuery({
@@ -97,6 +100,27 @@ export default function Enroll() {
       setJobId(r.job_id);
     } catch (e) {
       setError(e instanceof ApiError ? e.friendly : 'Couldn’t start enrollment. Please try again.');
+    }
+  }
+
+  async function recordVideo() {
+    if (!cameraRef.current || recording) return;
+    setRecording(true);
+    try {
+      const video = await cameraRef.current.recordAsync({ maxDuration: 3 });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (video?.uri) {
+        try {
+          const r = await enrollVideo(id, video.uri, token!);
+          setJobId(r.job_id);
+        } catch (e) {
+          setError(e instanceof ApiError ? e.friendly : 'Couldn’t start enrollment. Please try again.');
+        }
+      }
+    } catch {
+      setError('That recording didn’t take. Try again.');
+    } finally {
+      setRecording(false);
     }
   }
 
@@ -166,6 +190,39 @@ export default function Enroll() {
   }
 
   // --- Capture ---
+  if (captureMode === 'video') {
+    return (
+      <Screen style={{ padding: space.xl, alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ alignItems: 'center', gap: space.xs }}>
+          <AppText variant="h1">Enroll your face</AppText>
+          <AppText variant="body" color={colors.inkSoft} style={{ textAlign: 'center' }}>
+            Slowly turn your head left, then right
+          </AppText>
+        </View>
+
+        <ScanRing total={1} captured={recording ? 1 : 0} reduceMotion={reduce}>
+          <CameraView ref={cameraRef} style={{ flex: 1 }} facing="front" mode="video" />
+        </ScanRing>
+
+        <View style={{ width: '100%', gap: space.md, alignItems: 'center' }}>
+          {error ? <AppText variant="label" color={colors.danger}>{error}</AppText> : null}
+          <GlowButton
+            label={recording ? 'Recording… (3s)' : 'Record'}
+            onPress={recordVideo}
+            loading={recording}
+          />
+          <IconLabelAction
+            icon="camera"
+            label="Take photos instead"
+            onPress={() => setCaptureMode('photo')}
+            tone={colors.inkSoft}
+          />
+          <IconLabelAction icon="x" label="Cancel" onPress={() => router.back()} tone={colors.inkSoft} />
+        </View>
+      </Screen>
+    );
+  }
+
   const prompt = ANGLES[Math.min(shots.length, ANGLES.length - 1)];
   return (
     <Screen style={{ padding: space.xl, alignItems: 'center', justifyContent: 'space-between' }}>
@@ -186,6 +243,12 @@ export default function Enroll() {
         </AppText>
         {error ? <AppText variant="label" color={colors.danger}>{error}</AppText> : null}
         <GlowButton label={busy ? 'Hold still…' : 'Capture'} onPress={capture} loading={busy} />
+        <IconLabelAction
+          icon="video"
+          label="Record instead"
+          onPress={() => setCaptureMode('video')}
+          tone={colors.inkSoft}
+        />
         <IconLabelAction icon="x" label="Cancel" onPress={() => router.back()} tone={colors.inkSoft} />
       </View>
     </Screen>
