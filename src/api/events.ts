@@ -30,6 +30,7 @@ export type EventListItem = EventSettings & {
   status: string;
   privacy_default_remove_strangers: boolean;
   has_cover: boolean;
+  cover_source: 'auto' | 'host' | null;
   created_at: string;
   role: EventRole;
   member_count: number;
@@ -45,6 +46,9 @@ export type EventDetail = EventSettings & {
   status: string;
   privacy_default_remove_strangers: boolean;
   has_cover: boolean;
+  // Set once a host has explicitly picked a cover photo (spec 004 FR-010) — the
+  // "revert to auto-picked" action only makes sense then.
+  cover_source: 'auto' | 'host' | null;
   created_at: string;
 };
 
@@ -153,4 +157,47 @@ export function rejectMember(eventId: string, accountId: string, token: string):
  *  it (backend cascade — see app/api/events.py delete_event). */
 export function deleteEvent(eventId: string, token: string): Promise<void> {
   return apiFetch<void>(`/events/${eventId}`, { method: 'DELETE', token });
+}
+
+/** An event Highlights-strip entry (spec 004 US2) — already intersected with
+ *  the caller's accessible photo set server-side (R5). */
+export type Highlight = { photo_id: string; highlight_rank: number };
+
+export function getHighlights(eventId: string, token: string): Promise<Highlight[]> {
+  return apiFetch<Highlight[]>(`/events/${eventId}/highlights`, { token });
+}
+
+/** Host picks an existing event photo as the cover (spec 004 US3). */
+export function setCoverPhoto(eventId: string, photoId: string, token: string): Promise<EventDetail> {
+  return apiFetch<EventDetail>(`/events/${eventId}/cover/photo`, {
+    method: 'PUT',
+    jsonBody: { photo_id: photoId },
+    token,
+  });
+}
+
+/** Host reverts to the auto-picked cover. */
+export function clearCoverPhoto(eventId: string, token: string): Promise<EventDetail> {
+  return apiFetch<EventDetail>(`/events/${eventId}/cover/photo`, { method: 'DELETE', token });
+}
+
+export type StatsMember = {
+  account_id: string;
+  name: string;
+  enrolled: boolean;
+  appearance_count: number;
+};
+
+/** Host-only aggregates (spec 004 US4). Unclaimed clusters are a count only. */
+export type EventStats = {
+  photo_count: number;
+  cluster_count: number;
+  enrolled_count: number;
+  unclaimed_count: number;
+  processing: boolean;
+  members: StatsMember[];
+};
+
+export function getStats(eventId: string, token: string): Promise<EventStats> {
+  return apiFetch<EventStats>(`/events/${eventId}/stats`, { token });
 }

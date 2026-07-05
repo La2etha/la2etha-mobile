@@ -1,14 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   approveMember,
+  clearCoverPhoto,
   createEvent,
   deleteEvent,
   getEvent,
+  getHighlights,
+  getStats,
   joinEvent,
   listEvents,
   listMembers,
   rejectMember,
   removeMember,
+  setCoverPhoto,
   updateEventSettings,
   uploadCover,
   type EventSettingsUpdate,
@@ -117,5 +121,42 @@ export function useDeleteEvent(eventId: string, token: string | null) {
   return useMutation({
     mutationFn: () => deleteEvent(eventId, token!),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['events'] }),
+  });
+}
+
+export function useHighlights(eventId: string, token: string | null) {
+  return useQuery({
+    queryKey: ['highlights', eventId],
+    queryFn: () => getHighlights(eventId, token!),
+    enabled: !!token && !!eventId,
+  });
+}
+
+function invalidateCover(qc: ReturnType<typeof useQueryClient>, eventId: string) {
+  qc.invalidateQueries({ queryKey: ['event', eventId] });
+  qc.invalidateQueries({ queryKey: ['events'] });
+}
+
+export function useSetCoverPhoto(eventId: string, token: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (photoId: string) => setCoverPhoto(eventId, photoId, token!),
+    onSuccess: () => invalidateCover(qc, eventId),
+  });
+}
+
+export function useClearCoverPhoto(eventId: string, token: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => clearCoverPhoto(eventId, token!),
+    onSuccess: () => invalidateCover(qc, eventId),
+  });
+}
+
+export function useStats(eventId: string, token: string | null) {
+  return useQuery({
+    queryKey: ['stats', eventId],
+    queryFn: () => getStats(eventId, token!),
+    enabled: !!token && !!eventId,
   });
 }

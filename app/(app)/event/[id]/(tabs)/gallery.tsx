@@ -17,8 +17,9 @@ import { useAuth } from '../../../../../src/auth/AuthContext';
 import { useReducedMotion } from '../../../../../src/lib/reduceMotion';
 import { useGallery } from '../../../../../src/features/gallery/hooks';
 import { usePool } from '../../../../../src/features/host/hooks';
-import { useEvent } from '../../../../../src/features/events/hooks';
-import { partitionGallery } from '../../../../../src/features/gallery/partition';
+import { useEvent, useHighlights } from '../../../../../src/features/events/hooks';
+import { partitionGallery, bestOfYouIds } from '../../../../../src/features/gallery/partition';
+import { HighlightsStrip } from '../../../../../src/components/HighlightsStrip';
 import { ApiError } from '../../../../../src/api/errors';
 import { colors, space } from '../../../../../src/theme';
 
@@ -32,11 +33,13 @@ export default function Gallery() {
   const { width } = useWindowDimensions();
   const { data, isLoading, isError, error, refetch, isRefetching } = useGallery(id, token);
   const eventQ = useEvent(id, token);
+  const highlightsQ = useHighlights(id, token);
   const [showDemoted, setShowDemoted] = useState(false);
   const [celebrated, setCelebrated] = useState(false);
   const [view, setView] = useState<ViewMode>('mine');
 
   const { main, demoted } = partitionGallery(data?.items ?? []);
+  const bestIds = bestOfYouIds(main);
   const cell = Math.floor((width - space.xl * 2) / 3);
   // Everyone-sees-all (spec 005 US5): the host opted the whole event pool into
   // browsing, on top of each member's own "photos of you" gallery.
@@ -136,6 +139,7 @@ export default function Gallery() {
         ListHeaderComponent={
           <View style={{ paddingBottom: space.lg }}>
             {viewSwitch}
+            <HighlightsStrip highlights={highlightsQ.data} token={token!} onOpen={(photoId) => openPhoto(photoId)} />
             <View style={{ paddingTop: space.md }}>
               {celebrated && !reduce ? <Celebrate play /> : null}
               <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.sm }}>
@@ -161,6 +165,7 @@ export default function Gallery() {
             token={token!}
             size={cell}
             reduceMotion={reduce}
+            badge={bestIds.has(item.photo_id)}
             onPress={(rect) => openPhoto(item.photo_id, rect)}
           />
         )}

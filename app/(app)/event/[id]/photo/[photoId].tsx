@@ -18,7 +18,7 @@ import { IconLabelAction } from '../../../../../src/components/IconLabelAction';
 import { FaceOverlay } from '../../../../../src/components/FaceOverlay';
 import { useAuth } from '../../../../../src/auth/AuthContext';
 import { useGallery, usePhotoFaces, useClaim, useDeletePhoto } from '../../../../../src/features/gallery/hooks';
-import { useEvent } from '../../../../../src/features/events/hooks';
+import { useEvent, useSetCoverPhoto } from '../../../../../src/features/events/hooks';
 import { usePool } from '../../../../../src/features/host/hooks';
 import { photoUri } from '../../../../../src/api/gallery';
 import { exportPhoto } from '../../../../../src/api/edit';
@@ -62,6 +62,7 @@ export default function Lightbox() {
   const eventQ = useEvent(id, token);
   const pool = usePool(id, token);
   const del = useDeletePhoto(id, token);
+  const setCover = useSetCoverPhoto(id, token);
 
   const index = list.findIndex((i) => i.photo_id === currentId);
   const total = list.length;
@@ -251,6 +252,16 @@ export default function Lightbox() {
     }
   }
 
+  async function makeCover() {
+    setSheet(false);
+    try {
+      await setCover.mutateAsync(currentId);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (e) {
+      Alert.alert('Couldn’t set cover', e instanceof ApiError ? e.friendly : 'Please try again in a moment.');
+    }
+  }
+
   function confirmDelete() {
     setSheet(false);
     Alert.alert(
@@ -367,6 +378,9 @@ export default function Lightbox() {
               router.push(`/(app)/event/${id}/edit?photoId=${currentId}` as never);
             }}
           />
+          {isHost ? (
+            <IconLabelAction icon="image" label="Set as event cover" variant="card" onPress={makeCover} />
+          ) : null}
           {canDelete ? (
             <IconLabelAction
               icon="trash-2"

@@ -10,6 +10,8 @@ export type GalleryPhoto = {
   demote_reason?: string | null;
   confidence?: number | null;
   contributor_id: string;
+  // "Best photos of you" ranking (spec 004 R1) — main-relevance items only.
+  best_score?: number | null;
 };
 
 export type GalleryPage = { items: GalleryPhoto[]; next_cursor?: string | null };

@@ -9,6 +9,7 @@ const base: EventListItem = {
   status: 'active',
   privacy_default_remove_strangers: true,
   has_cover: false,
+  cover_source: null,
   created_at: '2026-01-01',
   role: 'member',
   member_count: 6,

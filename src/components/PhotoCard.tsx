@@ -1,8 +1,9 @@
 import { useRef } from 'react';
 import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
+import { Icon } from './Icon';
 import { photoUri } from '../api/gallery';
-import { colors, radius } from '../theme';
+import { colors, radius, role, space } from '../theme';
 
 export type PhotoRect = { x: number; y: number; w: number; h: number };
 
@@ -15,12 +16,15 @@ export function PhotoCard({
   size,
   onPress,
   reduceMotion = false,
+  badge = false,
 }: {
   photoId: string;
   token: string;
   size: number;
   onPress?: (rect?: PhotoRect) => void;
   reduceMotion?: boolean;
+  // "Best of you" badge (spec 004 US1) — a small star in the corner.
+  badge?: boolean;
 }) {
   const ref = useRef<View>(null);
 
@@ -43,6 +47,23 @@ export function PhotoCard({
         transition={reduceMotion ? 0 : 400}
         cachePolicy="disk"
       />
+      {badge ? (
+        <View
+          style={{
+            position: 'absolute',
+            top: space.xs + 3,
+            right: space.xs + 3,
+            backgroundColor: role.identity,
+            borderRadius: radius.pill,
+            width: 22,
+            height: 22,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Icon name="star" size={12} color={colors.paper} />
+        </View>
+      ) : null}
     </Pressable>
   );
 }

@@ -9,7 +9,7 @@ import { SecondaryButton } from '../../../../../src/components/SecondaryButton';
 import { StateView } from '../../../../../src/components/StateView';
 import { EmptyState } from '../../../../../src/components/EmptyState';
 import { useAuth } from '../../../../../src/auth/AuthContext';
-import { useEvent, useUploadCover } from '../../../../../src/features/events/hooks';
+import { useClearCoverPhoto, useEvent, useUploadCover } from '../../../../../src/features/events/hooks';
 import { ApiError } from '../../../../../src/api/errors';
 import { colors, space } from '../../../../../src/theme';
 
@@ -21,6 +21,7 @@ export default function You() {
   const router = useRouter();
   const { data: event, isLoading, isError, error, refetch } = useEvent(id, token);
   const uploadCover = useUploadCover(id, token);
+  const clearCoverPhoto = useClearCoverPhoto(id, token);
   const [coverBusy, setCoverBusy] = useState(false);
 
   async function pickCover() {
@@ -83,11 +84,25 @@ export default function You() {
             variant="card"
             onPress={pickCover}
           />
+          {event.cover_source === 'host' ? (
+            <IconLabelAction
+              icon="refresh-cw"
+              label={clearCoverPhoto.isPending ? 'Reverting…' : 'Use auto-picked cover'}
+              variant="card"
+              onPress={() => !clearCoverPhoto.isPending && clearCoverPhoto.mutate()}
+            />
+          ) : null}
           <IconLabelAction
             icon="check-circle"
             label="Host review"
             variant="card"
             onPress={() => router.push(`/(app)/event/${event.id}/review` as never)}
+          />
+          <IconLabelAction
+            icon="bar-chart-2"
+            label="Event stats"
+            variant="card"
+            onPress={() => router.push(`/(app)/event/${event.id}/stats` as never)}
           />
           <IconLabelAction
             icon="sliders"
