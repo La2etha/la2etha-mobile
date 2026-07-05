@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 import { MotiView } from 'moti';
 import { AppText } from './Text';
-import { colors, radius, space } from '../theme';
+import { colors, radius, role, space } from '../theme';
 
 /** A reassuring progress presenter for background CV jobs. Determinate bar with a
  *  real count when the API gives one (photo processing); otherwise a live shimmer
@@ -39,17 +39,17 @@ export function JobProgress({
           <MotiView
             animate={{ width: `${pct * 100}%` }}
             transition={{ type: 'timing', duration: reduceMotion ? 0 : 400 }}
-            style={{ height: '100%', borderRadius: radius.pill, backgroundColor: colors.glowTeal }}
+            style={{ height: '100%', borderRadius: radius.pill, backgroundColor: role.actionDeep }}
           />
         ) : reduceMotion ? (
-          <View style={{ height: '100%', width: '100%', backgroundColor: colors.glowTeal, opacity: 0.45 }} />
+          <View style={{ height: '100%', width: '100%', backgroundColor: role.actionDeep, opacity: 0.45 }} />
         ) : (
           // ponytail: fixed-width sweep, container clips it — good enough for a shimmer.
           <MotiView
             from={{ translateX: -140 }}
             animate={{ translateX: 360 }}
             transition={{ type: 'timing', duration: 1100, loop: true }}
-            style={{ height: '100%', width: 120, backgroundColor: colors.glowTeal, borderRadius: radius.pill }}
+            style={{ height: '100%', width: 120, backgroundColor: role.actionDeep, borderRadius: radius.pill }}
           />
         )}
       </View>

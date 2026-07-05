@@ -1,5 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { claimPhoto, getGallery, getPhotoFaces, searchGallery, unclaimPhoto } from '../../api/gallery';
+import {
+  claimPhoto,
+  deletePhoto,
+  getGallery,
+  getPhotoFaces,
+  searchGallery,
+  unclaimPhoto,
+} from '../../api/gallery';
 
 export function useSearch(eventId: string, token: string | null, query: string) {
   return useQuery({
@@ -33,5 +40,19 @@ export function useClaim(eventId: string, token: string | null) {
     mutationFn: ({ photoId, claimed }: { photoId: string; claimed: boolean }) =>
       claimed ? claimPhoto(photoId, token!) : unclaimPhoto(photoId, token!),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['gallery', eventId] }),
+  });
+}
+
+/** Delete a pool photo (spec 005 FR-018), then refresh every view that could
+ *  have shown it. */
+export function useDeletePhoto(eventId: string, token: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (photoId: string) => deletePhoto(photoId, token!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['gallery', eventId] });
+      qc.invalidateQueries({ queryKey: ['pool', eventId] });
+      qc.invalidateQueries({ queryKey: ['demoted', eventId] });
+    },
   });
 }

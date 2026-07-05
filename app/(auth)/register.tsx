@@ -8,7 +8,7 @@ import { Logo } from '../../src/components/Logo';
 import { useAuth } from '../../src/auth/AuthContext';
 import { validateRegister } from '../../src/features/auth/validate';
 import { ApiError } from '../../src/api/errors';
-import { colors, radius, space, type } from '../../src/theme';
+import { colors, radius, role, space, type } from '../../src/theme';
 
 export default function Register() {
   const { signUp } = useAuth();
@@ -51,7 +51,7 @@ export default function Register() {
   } as const;
 
   return (
-    <Screen style={{ padding: space.xl, gap: space.lg, justifyContent: 'center' }}>
+    <Screen logo={false} style={{ padding: space.xl, gap: space.lg, justifyContent: 'center' }}>
       <View style={{ alignItems: 'center', marginBottom: space.lg }}>
         <Logo wordmark widthPct={0.7} />
       </View>
@@ -91,7 +91,7 @@ export default function Register() {
           Have an account?
         </AppText>
         <Link href={'/(auth)/login' as never}>
-          <AppText variant="label" color={colors.stamp}>
+          <AppText variant="label" color={role.actionDeep}>
             Sign in
           </AppText>
         </Link>

@@ -1,18 +1,17 @@
 import { useState } from 'react';
-import { Alert, Pressable, View } from 'react-native';
+import { Alert, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
-import { Screen } from '../../src/components/Screen';
-import { AppText } from '../../src/components/Text';
-import { GlowButton } from '../../src/components/GlowButton';
-import { Logo } from '../../src/components/Logo';
-import { useAuth } from '../../src/auth/AuthContext';
-import { deleteIdentity } from '../../src/api/auth';
-import { colors, radius, space } from '../../src/theme';
+import { Screen } from '../../../src/components/Screen';
+import { AppText } from '../../../src/components/Text';
+import { GlowButton } from '../../../src/components/GlowButton';
+import { IconLabelAction } from '../../../src/components/IconLabelAction';
+import { Logo } from '../../../src/components/Logo';
+import { useAuth } from '../../../src/auth/AuthContext';
+import { deleteIdentity } from '../../../src/api/auth';
+import { colors, space } from '../../../src/theme';
 
 export default function Profile() {
   const { user, token, signOut } = useAuth();
-  const router = useRouter();
   const qc = useQueryClient();
   const [busy, setBusy] = useState(false);
 
@@ -42,10 +41,6 @@ export default function Profile() {
 
   return (
     <Screen style={{ padding: space.xl, gap: space.lg }}>
-      <Pressable onPress={() => router.back()} hitSlop={8} style={{ alignSelf: 'flex-start' }}>
-        <AppText variant="label" color={colors.inkSoft}>← Back</AppText>
-      </Pressable>
-
       <View style={{ alignItems: 'center', gap: space.xs, marginTop: space.lg }}>
         <Logo size={72} />
         <AppText variant="display">{user?.name ?? 'You'}</AppText>
@@ -55,22 +50,13 @@ export default function Profile() {
       <View style={{ flex: 1 }} />
 
       <View style={{ gap: space.md }}>
-        <Pressable
+        <IconLabelAction
+          icon="trash-2"
+          label={busy ? 'Deleting…' : 'Delete my face data'}
           onPress={confirmDelete}
-          disabled={busy}
-          style={{
-            padding: space.lg,
-            borderRadius: radius.md,
-            borderWidth: 1,
-            borderColor: colors.danger,
-            alignItems: 'center',
-            opacity: busy ? 0.5 : 1,
-          }}
-        >
-          <AppText variant="label" color={colors.danger}>
-            {busy ? 'Deleting…' : 'Delete my face data'}
-          </AppText>
-        </Pressable>
+          variant="card"
+          tone={colors.danger}
+        />
         <GlowButton label="Sign out" onPress={signOut} />
       </View>
     </Screen>

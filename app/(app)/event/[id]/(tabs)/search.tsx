@@ -2,15 +2,16 @@ import { useState } from 'react';
 import { Pressable, TextInput, View, useWindowDimensions } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Screen } from '../../../../src/components/Screen';
-import { AppText } from '../../../../src/components/Text';
-import { StateView } from '../../../../src/components/StateView';
-import { PhotoCard } from '../../../../src/components/PhotoCard';
-import { useAuth } from '../../../../src/auth/AuthContext';
-import { useReducedMotion } from '../../../../src/lib/reduceMotion';
-import { useSearch } from '../../../../src/features/gallery/hooks';
-import { ApiError } from '../../../../src/api/errors';
-import { colors, radius, space, type } from '../../../../src/theme';
+import { Screen } from '../../../../../src/components/Screen';
+import { AppText } from '../../../../../src/components/Text';
+import { StateView } from '../../../../../src/components/StateView';
+import { EmptyState } from '../../../../../src/components/EmptyState';
+import { PhotoCard } from '../../../../../src/components/PhotoCard';
+import { useAuth } from '../../../../../src/auth/AuthContext';
+import { useReducedMotion } from '../../../../../src/lib/reduceMotion';
+import { useSearch } from '../../../../../src/features/gallery/hooks';
+import { ApiError } from '../../../../../src/api/errors';
+import { colors, radius, space, type } from '../../../../../src/theme';
 
 // Warm NL examples (mixed EN/AR) to teach what search understands.
 const EXAMPLES = ['near the cake', 'dancing', 'group photo', 'جمب الورد'] as const;
@@ -98,10 +99,10 @@ export default function Search() {
     const items = data?.items ?? [];
     if (items.length === 0) {
       return (
-        <StateView
-          kind="empty"
+        <EmptyState
+          art="search"
           title="Nothing matched"
-          message={`No photos matched “${query}”. Try different words.`}
+          body={`No photos matched “${query}”. Try different words.`}
         />
       );
     }
@@ -127,9 +128,6 @@ export default function Search() {
   return (
     <Screen style={{ paddingTop: space.md }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.xl }}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <AppText variant="label" color={colors.inkSoft}>←</AppText>
-        </Pressable>
         <TextInput
           style={input}
           placeholder="Search your photos…"

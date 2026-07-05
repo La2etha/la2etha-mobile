@@ -18,7 +18,11 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <StatusBar style="dark" />
-            <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
+            {/* Explicit initialRouteName: without it, having (app) as the only
+                statically-configured Stack.Screen made React Navigation treat
+                it as the initial route, skipping index/splash entirely. */}
+            <Stack initialRouteName="index" screenOptions={{ headerShown: false, animation: 'fade' }}>
+              <Stack.Screen name="index" />
               <Stack.Screen name="(app)" options={{ animation: 'slide_from_bottom' }} />
             </Stack>
           </AuthProvider>

@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '../../src/components/Screen';
 import { AppText } from '../../src/components/Text';
 import { GlowButton } from '../../src/components/GlowButton';
+import { IconLabelAction } from '../../src/components/IconLabelAction';
 import { useAuth } from '../../src/auth/AuthContext';
 import { useJoinEvent } from '../../src/features/events/hooks';
 import { validateJoinCode } from '../../src/features/events/validate';
@@ -16,14 +17,19 @@ export default function JoinEvent() {
   const join = useJoinEvent(token);
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
   async function submit() {
     const v = validateJoinCode(code);
     if (!v.ok) return setError(v.error!);
     setError(null);
     try {
-      const event = await join.mutateAsync(code);
-      router.replace(`/(app)/event/${event.id}` as never);
+      const result = await join.mutateAsync(code);
+      if (result.status === 'pending') {
+        setPending(true); // join_approval is on — wait for the host, no content yet
+        return;
+      }
+      router.replace(`/(app)/event/${result.event!.id}` as never);
     } catch (e) {
       // 404 = code not found; keep it friendly, not "not allowed".
       const msg =
@@ -49,11 +55,25 @@ export default function JoinEvent() {
     backgroundColor: colors.card,
   } as const;
 
+  if (pending) {
+    // join_approval is on for this event — no content until the host approves.
+    return (
+      <Screen style={{ padding: space.xl, gap: space.lg, justifyContent: 'center' }}>
+        <AppText variant="display" style={{ textAlign: 'center' }}>Waiting for the host</AppText>
+        <AppText variant="body" color={colors.inkSoft} style={{ textAlign: 'center' }}>
+          This event needs the host to let you in. You’ll see it in your events list once
+          they approve.
+        </AppText>
+        <GlowButton label="Done" onPress={() => router.replace('/(app)' as never)} />
+      </Screen>
+    );
+  }
+
   return (
     <Screen style={{ padding: space.xl, gap: space.lg, justifyContent: 'center' }}>
-      <Pressable onPress={() => router.back()} style={{ alignSelf: 'flex-end' }} hitSlop={8}>
-        <AppText variant="label" color={colors.inkSoft}>Cancel</AppText>
-      </Pressable>
+      <View style={{ alignSelf: 'flex-end' }}>
+        <IconLabelAction icon="x" label="Cancel" onPress={() => router.back()} tone={colors.inkSoft} />
+      </View>
       <AppText variant="display">Join a لمّة</AppText>
       <AppText variant="body" color={colors.inkSoft}>
         Enter the code your host shared to see the photos you’re in.

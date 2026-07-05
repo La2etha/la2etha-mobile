@@ -4,7 +4,7 @@ import { GlowButton } from './GlowButton';
 import { colors, space } from '../theme/tokens';
 
 // Unified loading / empty / error presenter. Copy is always warm and blameless.
-// The empty state is where a demonstration gallery renders in later slices.
+// Illustrated states (gallery/search/permission/offline) use EmptyState instead.
 export function StateView({
   kind,
   title,

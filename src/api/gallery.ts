@@ -9,11 +9,21 @@ export type GalleryPhoto = {
   relevance: Relevance | string;
   demote_reason?: string | null;
   confidence?: number | null;
+  contributor_id: string;
 };
 
 export type GalleryPage = { items: GalleryPhoto[]; next_cursor?: string | null };
 
-export type PhotoFace = { x: number; y: number; w: number; h: number; is_me: boolean };
+export type PhotoFace = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  is_me: boolean;
+  // Populated only when the event's name policy allows it for this viewer
+  // (spec 005 FR-001/002) — server-gated, never a client-side hide.
+  name?: string | null;
+};
 
 export type SearchResultPhoto = {
   photo_id: string;
@@ -44,6 +54,12 @@ export function claimPhoto(photoId: string, token: string): Promise<void> {
 
 export function unclaimPhoto(photoId: string, token: string): Promise<void> {
   return apiFetch<void>(`/photos/${photoId}/claim`, { method: 'DELETE', token });
+}
+
+/** Delete a pool photo (spec 005 FR-018): host always, or the uploader when the
+ *  event's member_delete_own toggle allows it. Cascades server-side. */
+export function deletePhoto(photoId: string, token: string): Promise<void> {
+  return apiFetch<void>(`/photos/${photoId}`, { method: 'DELETE', token });
 }
 
 /** Source URL for a photo's bytes. The endpoint is access-guarded, so the caller

@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react';
-import { FlatList, View, Pressable, useWindowDimensions } from 'react-native';
+import { FlatList, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '../src/components/Screen';
 import { AppText } from '../src/components/Text';
 import { GlowButton } from '../src/components/GlowButton';
+import { IconLabelAction } from '../src/components/IconLabelAction';
 import { firstRun } from '../src/lib/firstRun';
 import { slides } from '../src/features/onboarding/slides';
-import { colors, space } from '../src/theme';
+import { colors, role, space } from '../src/theme';
 
 export default function Onboarding() {
   const { width } = useWindowDimensions();
@@ -26,11 +27,9 @@ export default function Onboarding() {
 
   return (
     <Screen>
-      <Pressable onPress={() => finish('/(auth)/login')} style={{ alignSelf: 'flex-end', padding: space.lg }}>
-        <AppText variant="label" color={colors.inkSoft}>
-          Skip
-        </AppText>
-      </Pressable>
+      <View style={{ alignSelf: 'flex-end' }}>
+        <IconLabelAction icon="chevrons-right" label="Skip" onPress={() => finish('/(auth)/login')} tone={colors.inkSoft} />
+      </View>
 
       <FlatList
         ref={ref}
@@ -58,7 +57,7 @@ export default function Onboarding() {
               width: idx === i ? 22 : 7,
               height: 7,
               borderRadius: 7,
-              backgroundColor: idx === i ? colors.stamp : colors.line,
+              backgroundColor: idx === i ? role.activeNav : colors.line,
             }}
           />
         ))}

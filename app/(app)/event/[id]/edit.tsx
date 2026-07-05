@@ -5,11 +5,12 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '../../../../src/components/Screen';
 import { AppText } from '../../../../src/components/Text';
 import { GlowButton } from '../../../../src/components/GlowButton';
+import { IconLabelAction } from '../../../../src/components/IconLabelAction';
 import { useAuth } from '../../../../src/auth/AuthContext';
 import { editPhoto } from '../../../../src/api/edit';
 import { saveDataUriToPhotos } from '../../../../src/lib/saveImage';
 import { ApiError } from '../../../../src/api/errors';
-import { colors, radius, space, type } from '../../../../src/theme';
+import { colors, radius, role, space, type } from '../../../../src/theme';
 
 export default function AiEdit() {
   const { photoId } = useLocalSearchParams<{ id: string; photoId: string }>();
@@ -74,18 +75,16 @@ export default function AiEdit() {
           contentFit="contain"
         />
         <GlowButton label="Save to Photos" onPress={save} />
-        <Pressable onPress={() => setResult(null)} style={{ alignItems: 'center', paddingVertical: space.sm }}>
-          <AppText variant="label" color={colors.stamp}>Try another edit</AppText>
-        </Pressable>
+        <IconLabelAction icon="refresh-cw" label="Try another edit" onPress={() => setResult(null)} tone={role.actionDeep} />
       </Screen>
     );
   }
 
   return (
     <Screen style={{ padding: space.xl, gap: space.lg }}>
-      <Pressable onPress={() => router.back()} hitSlop={8} style={{ alignSelf: 'flex-start' }}>
-        <AppText variant="label" color={colors.inkSoft}>← Back</AppText>
-      </Pressable>
+      <View style={{ alignSelf: 'flex-start' }}>
+        <IconLabelAction icon="arrow-left" label="Back" onPress={() => router.back()} tone={colors.inkSoft} />
+      </View>
       <AppText variant="display">AI edit</AppText>
       <AppText variant="body" color={colors.inkSoft}>
         Describe a change. This only works on a photo of just you, and your original is never touched.
@@ -105,8 +104,8 @@ export default function AiEdit() {
             height: 22,
             borderRadius: 6,
             borderWidth: 2,
-            borderColor: consent ? colors.stamp : colors.line,
-            backgroundColor: consent ? colors.stamp : 'transparent',
+            borderColor: consent ? role.actionDeep : colors.line,
+            backgroundColor: consent ? role.actionDeep : 'transparent',
             alignItems: 'center',
             justifyContent: 'center',
           }}

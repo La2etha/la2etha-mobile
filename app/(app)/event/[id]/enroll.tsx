@@ -1,18 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '../../../../src/components/Screen';
 import { AppText } from '../../../../src/components/Text';
 import { GlowButton } from '../../../../src/components/GlowButton';
+import { IconLabelAction } from '../../../../src/components/IconLabelAction';
 import { StateView } from '../../../../src/components/StateView';
+import { EmptyState } from '../../../../src/components/EmptyState';
 import { JobProgress } from '../../../../src/components/JobProgress';
 import { ScanRing } from '../../../../src/components/ScanRing';
 import { useAuth } from '../../../../src/auth/AuthContext';
 import { useReducedMotion } from '../../../../src/lib/reduceMotion';
 import { enroll, enrollStatus } from '../../../../src/api/enroll';
+import { enrolledStore } from '../../../../src/features/events/enrolledStore';
 import { enrollPhase, enrollMessage } from '../../../../src/features/jobs';
 import { ApiError } from '../../../../src/api/errors';
 import { colors, space } from '../../../../src/theme';
@@ -39,6 +42,7 @@ export default function Enroll() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { token } = useAuth();
   const router = useRouter();
+  const qc = useQueryClient();
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [shots, setShots] = useState<string[]>([]);
@@ -58,8 +62,11 @@ export default function Enroll() {
 
   // Stamp-thunk when enrollment lands.
   useEffect(() => {
-    if (phase === 'done') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [phase]);
+    if (phase === 'done') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      enrolledStore.set(id).then(() => qc.invalidateQueries({ queryKey: ['enrolled', id] }));
+    }
+  }, [phase, id, qc]);
 
   // Cycle the reassurance copy while we wait on the CV job.
   useEffect(() => {
@@ -110,10 +117,10 @@ export default function Enroll() {
   if (!permission.granted) {
     return (
       <Screen>
-        <StateView
-          kind="error"
+        <EmptyState
+          art="permission"
           title="Camera access needed"
-          message="Lahza needs your camera to scan your face for this event. Nothing is shared — it only helps find you in the photos."
+          body="Lahza needs your camera to scan your face for this event. Nothing is shared — it only helps find you in the photos."
           actionLabel="Allow camera"
           onAction={requestPermission}
         />
@@ -179,9 +186,7 @@ export default function Enroll() {
         </AppText>
         {error ? <AppText variant="label" color={colors.danger}>{error}</AppText> : null}
         <GlowButton label={busy ? 'Hold still…' : 'Capture'} onPress={capture} loading={busy} />
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <AppText variant="label" color={colors.inkSoft}>Cancel</AppText>
-        </Pressable>
+        <IconLabelAction icon="x" label="Cancel" onPress={() => router.back()} tone={colors.inkSoft} />
       </View>
     </Screen>
   );

@@ -9,7 +9,7 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { AppText } from './Text';
 import { useReducedMotion } from '../lib/reduceMotion';
-import { colors, radius, space } from '../theme/tokens';
+import { colors, radius, role, space } from '../theme/tokens';
 
 const APressable = Animated.createAnimatedComponent(Pressable);
 
@@ -18,12 +18,17 @@ export function GlowButton({
   onPress,
   loading,
   disabled,
+  tone = 'action',
 }: {
   label: string;
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
+  /** 'identity' is reserved for "This is me" — the one CTA that IS the identity claim (FR-009). */
+  tone?: 'action' | 'identity';
 }) {
+  const fill = tone === 'identity' ? role.identityDeep : role.actionDeep;
+  const glowColor = tone === 'identity' ? role.identity : role.action;
   const reduce = useReducedMotion();
   const press = useSharedValue(0); // 0 rest → 1 pressed
   const active = !disabled && !loading;
@@ -60,7 +65,7 @@ export function GlowButton({
       }}
       style={[
         {
-          backgroundColor: colors.stamp,
+          backgroundColor: fill,
           opacity: disabled ? 0.5 : 1,
           borderRadius: radius.md,
           paddingVertical: space.md + 2,
@@ -68,7 +73,7 @@ export function GlowButton({
           alignItems: 'center',
           justifyContent: 'center',
           minWidth: 200,
-          shadowColor: colors.glowHot,
+          shadowColor: glowColor,
           shadowOffset: { width: 0, height: 6 },
           elevation: 6,
         },

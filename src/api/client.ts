@@ -2,7 +2,7 @@ import { API_BASE_URL } from './config';
 import { ApiError, toFriendly } from './errors';
 
 type Opts = {
-  method?: 'GET' | 'POST' | 'DELETE' | 'PATCH';
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   jsonBody?: unknown;
   formBody?: Record<string, string>;
   multipart?: FormData; // file uploads — let fetch set the multipart boundary itself
@@ -35,7 +35,13 @@ export async function apiFetch<T>(path: string, opts: Opts = {}): Promise<T> {
   } catch {
     throw new ApiError(0, toFriendly(0, 'network'));
   }
-  if (!res.ok) throw new ApiError(res.status, toFriendly(res.status, 'http'), `HTTP ${res.status}`);
+  if (!res.ok) {
+    if (__DEV__ && typeof res.clone === 'function') {
+      const bodyText = await res.clone().text().catch(() => '');
+      console.warn(`[apiFetch] ${opts.method ?? 'GET'} ${path} -> ${res.status}`, bodyText);
+    }
+    throw new ApiError(res.status, toFriendly(res.status, 'http'), `HTTP ${res.status}`);
+  }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }

@@ -14,9 +14,12 @@ import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AppText } from '../../../../../src/components/Text';
 import { GlowButton } from '../../../../../src/components/GlowButton';
+import { IconLabelAction } from '../../../../../src/components/IconLabelAction';
 import { FaceOverlay } from '../../../../../src/components/FaceOverlay';
 import { useAuth } from '../../../../../src/auth/AuthContext';
-import { useGallery, usePhotoFaces, useClaim } from '../../../../../src/features/gallery/hooks';
+import { useGallery, usePhotoFaces, useClaim, useDeletePhoto } from '../../../../../src/features/gallery/hooks';
+import { useEvent } from '../../../../../src/features/events/hooks';
+import { usePool } from '../../../../../src/features/host/hooks';
 import { photoUri } from '../../../../../src/api/gallery';
 import { exportPhoto } from '../../../../../src/api/edit';
 import { saveDataUriToPhotos } from '../../../../../src/lib/saveImage';
@@ -33,7 +36,7 @@ export default function Lightbox() {
     oh?: string;
   }>();
   const { id, photoId } = params;
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const router = useRouter();
   const { width, height } = useWindowDimensions();
 
@@ -56,9 +59,23 @@ export default function Lightbox() {
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const faces = usePhotoFaces(currentId, token, showFaces);
   const claim = useClaim(id, token);
+  const eventQ = useEvent(id, token);
+  const pool = usePool(id, token);
+  const del = useDeletePhoto(id, token);
 
   const index = list.findIndex((i) => i.photo_id === currentId);
   const total = list.length;
+
+  // Delete eligibility (spec 005 FR-018): host always; the uploader when the
+  // event allows member_delete_own. Look up the uploader from whichever cached
+  // list (personal gallery or the "Everyone" pool) has this photo.
+  const currentItem =
+    list.find((i) => i.photo_id === currentId) ?? pool.data?.find((p) => p.id === currentId);
+  const isHost = eventQ.data?.owner_id === user?.id;
+  const canDelete =
+    !!eventQ.data &&
+    !!currentItem &&
+    (isHost || (currentItem.contributor_id === user?.id && eventQ.data.member_delete_own));
 
   const dispW = width;
   // Cap portrait photos so the controls stay on-screen.
@@ -70,6 +87,11 @@ export default function Lightbox() {
   const ty = useSharedValue(0);
   const savedTx = useSharedValue(0);
   const savedTy = useSharedValue(0);
+  // Swipe-to-next/prev: the current photo slides fully off-screen in the swipe
+  // direction, the new one is placed off-screen on the opposite side, then
+  // slides in — a real carousel motion, not just expo-image's load crossfade.
+  const swipeX = useSharedValue(0);
+  const swiping = useSharedValue(false);
 
   // Morph: 0 = at the thumbnail rect, 1 = full-screen. Runs once on open.
   const morph = useSharedValue(0);
@@ -111,13 +133,33 @@ export default function Lightbox() {
     savedTy.value = 0;
   }
 
-  function go(delta: number) {
-    if (index < 0) return;
-    const next = index + delta;
-    if (next < 0 || next >= total) return;
+  // Phase 2 (UI thread → JS): the outgoing photo has finished sliding off-screen.
+  // Swap the source while it's off-screen, park the new one on the opposite
+  // side, then animate it in.
+  function finishSwipe(next: number, outDir: number) {
     resetZoom();
     setSize(null); // new aspect ratio; recompute on load
     setCurrentId(list[next].photo_id);
+    swipeX.value = -outDir * width;
+    swipeX.value = withTiming(0, { duration: 220, easing: Easing.out(Easing.cubic) }, (finished) => {
+      if (finished) swiping.value = false;
+    });
+  }
+
+  // Phase 1 (JS): slide the current photo fully off-screen in the swipe direction.
+  function startSwipe(delta: number) {
+    if (index < 0 || swiping.value) return;
+    const next = index + delta;
+    if (next < 0 || next >= total) return;
+    swiping.value = true;
+    const outDir = delta > 0 ? -1 : 1; // next → slides left; prev → slides right
+    swipeX.value = withTiming(
+      outDir * width,
+      { duration: 160, easing: Easing.out(Easing.cubic) },
+      (finished) => {
+        if (finished) runOnJS(finishSwipe)(next, outDir);
+      }
+    );
   }
 
   const pinch = Gesture.Pinch()
@@ -158,21 +200,25 @@ export default function Lightbox() {
     });
 
   // Swipe to the next/previous photo — only when not zoomed (so pan can move a
-  // zoomed image freely).
+  // zoomed image freely) and not already mid-swipe.
   const flingLeft = Gesture.Fling()
     .direction(Directions.LEFT)
     .onEnd(() => {
-      if (scale.value === 1) runOnJS(go)(1);
+      if (scale.value === 1 && !swiping.value) runOnJS(startSwipe)(1);
     });
   const flingRight = Gesture.Fling()
     .direction(Directions.RIGHT)
     .onEnd(() => {
-      if (scale.value === 1) runOnJS(go)(-1);
+      if (scale.value === 1 && !swiping.value) runOnJS(startSwipe)(-1);
     });
 
   const gesture = Gesture.Simultaneous(doubleTap, pinch, pan, flingLeft, flingRight);
   const zoomStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: scale.value }],
+    transform: [
+      { translateX: tx.value + swipeX.value },
+      { translateY: ty.value },
+      { scale: scale.value },
+    ],
   }));
 
   async function correct(claimed: boolean) {
@@ -203,6 +249,32 @@ export default function Lightbox() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function confirmDelete() {
+    setSheet(false);
+    Alert.alert(
+      'Delete this photo?',
+      'It disappears from the pool and every gallery it was in. This can’t be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await del.mutateAsync(currentId);
+              router.back();
+            } catch (e) {
+              Alert.alert(
+                'Couldn’t delete',
+                e instanceof ApiError ? e.friendly : 'Please try again in a moment.'
+              );
+            }
+          },
+        },
+      ]
+    );
   }
 
   return (
@@ -273,11 +345,9 @@ export default function Lightbox() {
 
           <View style={{ flexDirection: 'row', gap: space.md }}>
             <View style={{ flex: 1 }}>
-              <GlowButton label="This is me" onPress={() => correct(true)} loading={claim.isPending} />
+              <GlowButton label="This is me" tone="identity" onPress={() => correct(true)} loading={claim.isPending} />
             </View>
-            <Pressable onPress={() => correct(false)} style={{ justifyContent: 'center', paddingHorizontal: space.lg }}>
-              <AppText variant="label" color={colors.paper}>Not me</AppText>
-            </Pressable>
+            <IconLabelAction icon="x" label="Not me" onPress={() => correct(false)} tone={colors.paper} />
           </View>
         </View>
       </Animated.View>
@@ -286,36 +356,29 @@ export default function Lightbox() {
       <Modal visible={sheet} transparent animationType="slide" onRequestClose={() => setSheet(false)}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(11,59,58,0.5)' }} onPress={() => setSheet(false)} />
         <View style={{ backgroundColor: colors.paper, padding: space.xl, gap: space.sm, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg }}>
-          <SheetRow label="Save to Photos" onPress={() => saveExport(false)} />
-          <SheetRow label="Save without strangers" onPress={() => saveExport(true)} />
-          <SheetRow
+          <IconLabelAction icon="download" label="Save to Photos" onPress={() => saveExport(false)} variant="card" />
+          <IconLabelAction icon="user-x" label="Save without strangers" onPress={() => saveExport(true)} variant="card" />
+          <IconLabelAction
+            icon="edit-3"
             label="AI edit (just you)"
+            variant="card"
             onPress={() => {
               setSheet(false);
               router.push(`/(app)/event/${id}/edit?photoId=${currentId}` as never);
             }}
           />
-          <Pressable onPress={() => setSheet(false)} style={{ paddingVertical: space.md, alignItems: 'center' }}>
-            <AppText variant="label" color={colors.inkSoft}>Cancel</AppText>
-          </Pressable>
+          {canDelete ? (
+            <IconLabelAction
+              icon="trash-2"
+              label="Delete photo"
+              variant="card"
+              tone={colors.danger}
+              onPress={confirmDelete}
+            />
+          ) : null}
+          <IconLabelAction icon="x" label="Cancel" onPress={() => setSheet(false)} tone={colors.inkSoft} />
         </View>
       </Modal>
     </View>
-  );
-}
-
-function SheetRow({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({
-        paddingVertical: space.md,
-        paddingHorizontal: space.lg,
-        borderRadius: radius.md,
-        backgroundColor: pressed ? colors.paperSunk : colors.card,
-      })}
-    >
-      <AppText variant="h2" color={colors.ink}>{label}</AppText>
-    </Pressable>
   );
 }

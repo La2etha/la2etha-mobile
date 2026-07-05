@@ -1,24 +1,28 @@
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '../../../../src/components/Screen';
 import { AppText } from '../../../../src/components/Text';
 import { GlowButton } from '../../../../src/components/GlowButton';
+import { IconLabelAction } from '../../../../src/components/IconLabelAction';
+import { EmptyState } from '../../../../src/components/EmptyState';
 import { JobProgress } from '../../../../src/components/JobProgress';
 import { useAuth } from '../../../../src/auth/AuthContext';
 import { useReducedMotion } from '../../../../src/lib/reduceMotion';
+import { useEvent } from '../../../../src/features/events/hooks';
 import { uploadPhotos, processingStatus, UploadAccepted } from '../../../../src/api/photos';
 import { processingPhase } from '../../../../src/features/jobs';
 import { ApiError } from '../../../../src/api/errors';
-import { colors, space } from '../../../../src/theme';
+import { colors, role, space } from '../../../../src/theme';
 
 export default function AddPhotos() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const router = useRouter();
   const qc = useQueryClient();
+  const eventQ = useEvent(id, token);
   const [result, setResult] = useState<UploadAccepted | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -89,9 +93,37 @@ export default function AddPhotos() {
             <GlowButton label="Done" onPress={() => router.back()} />
           </>
         )}
-        <Pressable onPress={addMore} style={{ alignItems: 'center', paddingVertical: space.sm }}>
-          <AppText variant="label" color={colors.stamp}>Add more</AppText>
-        </Pressable>
+        <IconLabelAction icon="plus" label="Add more" onPress={addMore} tone={role.actionDeep} />
+      </Screen>
+    );
+  }
+
+  // --- Host-set toggles (spec 005 US5) block adding before the picker even opens ---
+  const event = eventQ.data;
+  const isHost = event?.owner_id === user?.id;
+  if (event?.status === 'archived') {
+    return (
+      <Screen>
+        <EmptyState
+          art="offline"
+          title="This event is archived"
+          body="The host closed it to new uploads. Your gallery and search still work."
+          actionLabel="Back"
+          onAction={() => router.back()}
+        />
+      </Screen>
+    );
+  }
+  if (event?.member_uploads === 'host_only' && !isHost) {
+    return (
+      <Screen>
+        <EmptyState
+          art="permission"
+          title="The host is managing photos"
+          body="Only the host can add photos to this event right now."
+          actionLabel="Back"
+          onAction={() => router.back()}
+        />
       </Screen>
     );
   }
@@ -105,9 +137,7 @@ export default function AddPhotos() {
       </AppText>
       {error ? <AppText variant="label" color={colors.danger}>{error}</AppText> : null}
       <GlowButton label={busy ? 'Uploading…' : 'Choose photos'} onPress={pick} loading={busy} />
-      <Pressable onPress={() => router.back()} style={{ alignItems: 'center', paddingVertical: space.sm }}>
-        <AppText variant="label" color={colors.inkSoft}>Cancel</AppText>
-      </Pressable>
+      <IconLabelAction icon="x" label="Cancel" onPress={() => router.back()} tone={colors.inkSoft} />
     </Screen>
   );
 }

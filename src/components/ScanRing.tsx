@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { View } from 'react-native';
 import { MotiView } from 'moti';
-import { colors } from '../theme';
+import { colors, role } from '../theme';
 
 /** The enrollment scan ring: a glowing circular frame around the camera preview
  *  with one pip per required sample, filled as each angle is captured. This is a
@@ -29,7 +29,7 @@ export function ScanRing({
       accessibilityLabel={`Captured ${captured} of ${total}`}
       style={{ width: size + 40, height: size + 40, alignItems: 'center', justifyContent: 'center' }}
     >
-      {/* Breathing glow halo */}
+      {/* Breathing glow halo — orange (identity, D6): this is a scan of YOU. */}
       <MotiView
         from={{ opacity: reduceMotion ? 0.5 : 0.35, scale: 1 }}
         animate={{ opacity: reduceMotion ? 0.5 : 0.6, scale: reduceMotion ? 1 : 1.04 }}
@@ -39,11 +39,11 @@ export function ScanRing({
           width: size,
           height: size,
           borderRadius: r,
-          shadowColor: colors.glowTeal,
+          shadowColor: role.identity,
           shadowOpacity: 0.9,
           shadowRadius: 24,
           shadowOffset: { width: 0, height: 0 },
-          backgroundColor: colors.glowTeal,
+          backgroundColor: role.identity,
         }}
       />
 
@@ -55,7 +55,7 @@ export function ScanRing({
           borderRadius: r,
           overflow: 'hidden',
           borderWidth: 3,
-          borderColor: colors.glowTeal,
+          borderColor: role.identity,
           backgroundColor: colors.ink,
         }}
       >
@@ -76,7 +76,7 @@ export function ScanRing({
               width: 12,
               height: 12,
               borderRadius: 6,
-              backgroundColor: filled ? colors.glowHot : colors.line,
+              backgroundColor: filled ? role.action : colors.line,
             }}
           />
         );

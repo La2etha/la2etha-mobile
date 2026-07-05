@@ -15,7 +15,7 @@ export default function AppLayout() {
   if (status === 'signedOut') return <Redirect href={'/(auth)/login' as never} />;
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
+      <Stack.Screen name="(tabs)" />
       <Stack.Screen name="create" options={{ presentation: 'modal' }} />
       <Stack.Screen name="join" options={{ presentation: 'modal' }} />
       {/* Lightbox is a transparent modal so the gallery shows behind while the

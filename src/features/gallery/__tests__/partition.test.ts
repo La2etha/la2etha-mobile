@@ -1,7 +1,12 @@
 import { partitionGallery } from '../partition';
 import type { GalleryPhoto } from '../../../api/gallery';
 
-const p = (photo_id: string, relevance: string): GalleryPhoto => ({ photo_id, origin: 'auto', relevance });
+const p = (photo_id: string, relevance: string): GalleryPhoto => ({
+  photo_id,
+  origin: 'auto',
+  relevance,
+  contributor_id: 'u1',
+});
 
 test('splits main relevance from demoted low-relevance', () => {
   const { main, demoted } = partitionGallery([p('a', 'main'), p('b', 'low'), p('c', 'main')]);

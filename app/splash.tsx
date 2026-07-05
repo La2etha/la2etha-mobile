@@ -7,9 +7,9 @@ import { Logo } from '../src/components/Logo';
 import { useAuth } from '../src/auth/AuthContext';
 import { firstRun } from '../src/lib/firstRun';
 import { decideBootRoute } from '../src/boot/route';
-import { colors } from '../src/theme';
+import { colors, role } from '../src/theme';
 
-// An orange focus-bracket corner (the logo's scan motif) that draws inward.
+// A teal focus-bracket corner (the logo's scan motif) that draws inward.
 function Corner({ pos, reduce }: { pos: 'tl' | 'tr' | 'bl' | 'br'; reduce: boolean }) {
   const isTop = pos === 'tl' || pos === 'tr';
   const isLeft = pos === 'tl' || pos === 'bl';
@@ -25,7 +25,7 @@ function Corner({ pos, reduce }: { pos: 'tl' | 'tr' | 'bl' | 'br'; reduce: boole
         height: 26,
         [isTop ? 'top' : 'bottom']: 0,
         [isLeft ? 'left' : 'right']: 0,
-        borderColor: colors.stamp,
+        borderColor: role.action,
         borderTopWidth: isTop ? 3 : 0,
         borderBottomWidth: isTop ? 0 : 3,
         borderLeftWidth: isLeft ? 3 : 0,
@@ -65,7 +65,7 @@ export default function Splash() {
   }, [status]);
 
   return (
-    <Screen style={{ alignItems: 'center', justifyContent: 'center', backgroundColor: colors.paper }}>
+    <Screen logo={false} style={{ alignItems: 'center', justifyContent: 'center', backgroundColor: colors.paper }}>
       <View style={{ width: 168, height: 168, alignItems: 'center', justifyContent: 'center' }}>
         <Corner pos="tl" reduce={reduce} />
         <Corner pos="tr" reduce={reduce} />

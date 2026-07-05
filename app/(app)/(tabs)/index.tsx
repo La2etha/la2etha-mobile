@@ -1,14 +1,14 @@
-import { FlatList, Pressable, RefreshControl, View } from 'react-native';
+import { FlatList, RefreshControl, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Screen } from '../../src/components/Screen';
-import { AppText } from '../../src/components/Text';
-import { GlowButton } from '../../src/components/GlowButton';
-import { StateView } from '../../src/components/StateView';
-import { TicketStub } from '../../src/components/TicketStub';
-import { useAuth } from '../../src/auth/AuthContext';
-import { useEvents } from '../../src/features/events/hooks';
-import { ApiError } from '../../src/api/errors';
-import { colors, space } from '../../src/theme';
+import { Screen } from '../../../src/components/Screen';
+import { AppText } from '../../../src/components/Text';
+import { StateView } from '../../../src/components/StateView';
+import { EmptyState } from '../../../src/components/EmptyState';
+import { EventPass } from '../../../src/components/EventPass';
+import { useAuth } from '../../../src/auth/AuthContext';
+import { useEvents } from '../../../src/features/events/hooks';
+import { ApiError } from '../../../src/api/errors';
+import { colors, space } from '../../../src/theme';
 
 export default function EventsHome() {
   const { user, token } = useAuth();
@@ -26,10 +26,10 @@ export default function EventsHome() {
   if (isError) {
     return (
       <Screen>
-        <StateView
-          kind="error"
+        <EmptyState
+          art="offline"
           title="Couldn’t load your events"
-          message={error instanceof ApiError ? error.friendly : 'Please try again in a moment.'}
+          body={error instanceof ApiError ? error.friendly : 'Please try again in a moment.'}
           actionLabel="Try again"
           onAction={() => refetch()}
         />
@@ -49,22 +49,13 @@ export default function EventsHome() {
           <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.inkSoft} />
         }
         ListHeaderComponent={
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: space.xl }}>
-            <View style={{ flex: 1, paddingRight: space.md }}>
-              <AppText variant="display">Ahlan, {user?.name ?? 'friend'}</AppText>
-              <AppText variant="body" color={colors.inkSoft}>Your لمّات live here.</AppText>
-            </View>
-            <Pressable
-              onPress={() => router.push('/(app)/profile' as never)}
-              hitSlop={8}
-              accessibilityRole="button"
-            >
-              <AppText variant="label" color={colors.stamp}>Profile</AppText>
-            </Pressable>
+          <View style={{ marginBottom: space.xl }}>
+            <AppText variant="display">Ahlan, {user?.name ?? 'friend'}</AppText>
+            <AppText variant="body" color={colors.inkSoft}>Your لمّات live here.</AppText>
           </View>
         }
         renderItem={({ item }) => (
-          <TicketStub event={item} onPress={() => router.push(`/(app)/event/${item.id}` as never)} />
+          <EventPass event={item} token={token!} onOpen={() => router.push(`/(app)/event/${item.id}` as never)} />
         )}
         ListEmptyComponent={
           <View style={{ paddingTop: space.xxl, alignItems: 'center', gap: space.sm }}>
@@ -75,18 +66,6 @@ export default function EventsHome() {
           </View>
         }
       />
-
-      {/* Action bar: one primary (Create), one secondary (Join) — §8.6 */}
-      <View style={{ padding: space.xl, gap: space.md, borderTopWidth: 1, borderTopColor: colors.line }}>
-        <GlowButton label="Create an event" onPress={() => router.push('/(app)/create' as never)} />
-        <Pressable
-          onPress={() => router.push('/(app)/join' as never)}
-          accessibilityRole="button"
-          style={{ alignItems: 'center', paddingVertical: space.sm }}
-        >
-          <AppText variant="label" color={colors.stamp}>Join with a code</AppText>
-        </Pressable>
-      </View>
     </Screen>
   );
 }

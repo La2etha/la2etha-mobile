@@ -1,15 +1,17 @@
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '../../../../src/components/Screen';
 import { AppText } from '../../../../src/components/Text';
 import { StateView } from '../../../../src/components/StateView';
+import { EmptyState } from '../../../../src/components/EmptyState';
 import { PhotoCard } from '../../../../src/components/PhotoCard';
+import { IconLabelAction } from '../../../../src/components/IconLabelAction';
 import { useAuth } from '../../../../src/auth/AuthContext';
 import { useDemoted, usePool, usePromote } from '../../../../src/features/host/hooks';
 import { uniqueDemotedPhotos } from '../../../../src/features/host/dedupe';
 import { ApiError } from '../../../../src/api/errors';
-import { colors, radius, space } from '../../../../src/theme';
+import { colors, radius, role, space } from '../../../../src/theme';
 
 const REASON_LABEL: Record<string, string> = {
   blurry: 'Looked blurry',
@@ -36,10 +38,10 @@ export default function HostReview() {
     const forbidden = demoted.error instanceof ApiError && demoted.error.status === 403;
     return (
       <Screen>
-        <StateView
-          kind="error"
+        <EmptyState
+          art={forbidden ? 'permission' : 'offline'}
           title={forbidden ? 'Hosts only' : 'Couldn’t load review'}
-          message={
+          body={
             forbidden
               ? 'Only the event host can review demoted photos.'
               : demoted.error instanceof ApiError
@@ -63,9 +65,9 @@ export default function HostReview() {
         contentContainerStyle={{ padding: space.xl, paddingBottom: space.xxl }}
         ListHeaderComponent={
           <View style={{ marginBottom: space.lg }}>
-            <Pressable onPress={() => router.back()} hitSlop={8} style={{ marginBottom: space.md }}>
-              <AppText variant="label" color={colors.inkSoft}>← Event</AppText>
-            </Pressable>
+            <View style={{ alignSelf: 'flex-start', marginBottom: space.md }}>
+              <IconLabelAction icon="arrow-left" label="Event" onPress={() => router.back()} tone={colors.inkSoft} />
+            </View>
             <AppText variant="display">Host review</AppText>
             <AppText variant="body" color={colors.inkSoft}>
               {pool.data ? `${pool.data.length} photos in the pool. ` : ''}
@@ -99,18 +101,14 @@ export default function HostReview() {
             <View style={{ flex: 1 }}>
               <AppText variant="label">{REASON_LABEL[item.demote_reason ?? ''] ?? 'Demoted'}</AppText>
             </View>
-            <Pressable
-              onPress={() => promote.mutate(item.photo_id)}
-              disabled={promote.isPending}
-              style={{
-                backgroundColor: colors.stamp,
-                borderRadius: radius.md,
-                paddingHorizontal: space.lg,
-                paddingVertical: space.sm,
-              }}
-            >
-              <AppText variant="label" color={colors.paper}>Promote</AppText>
-            </Pressable>
+            <View style={{ backgroundColor: role.actionDeep, borderRadius: radius.md }}>
+              <IconLabelAction
+                icon="check"
+                label={promote.isPending ? 'Promoting…' : 'Promote'}
+                onPress={() => !promote.isPending && promote.mutate(item.photo_id)}
+                tone={colors.paper}
+              />
+            </View>
           </View>
         )}
       />
